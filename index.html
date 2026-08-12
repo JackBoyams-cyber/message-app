@@ -1,0 +1,360 @@
+import os
+import webbrowser
+
+# Dictionnaire contenant les messages spécifiques pour chaque contact
+conversations_data = {
+    "EQUITYBCDC": [
+        {"type": "date", "texte": "jeudi 06 août"},
+        {"type": "message", "texte": "EQUITYBCDC Confirme. Le depot de USD. 185.00 sur le compte 7112*******1832 INSTITUT SUPERIEUR DE STATISTI... a ete effectue avec succes. ref. CDT8iRMYZ14p le 06-08-2026 at 12:19. Merci.", "heure": "12:20"},
+    ],
+    "Vodacom": [
+        {"type": "date", "texte": "vendredi 19 juin"},
+        {"type": "message", "texte": "Le solde de votre forfait internet de 0.00$ 1.00 GB est de 0.00 KB, valide jusqu'au 20-06-2026.", "heure": "21:00"}
+    ],
+    "1463": [
+        {"type": "date", "texte": "vendredi 19 juin"},
+        {"type": "message", "texte": "Cher Client, Vodacom configure les parametres Internet de votre telephone. Veuillez enregistrer le profil recu.", "heure": "20:30"}
+    ],
+    "VAULTPAY": [
+        {"type": "date", "texte": "jeudi 18 juin"},
+        {"type": "message", "texte": "Votre verification KYC a ete rejetee. Note: La piece d'identite soumise ne respecte pas les formats requis.", "heure": "15:45"}
+    ],
+    "+243994858031": [
+        {"type": "date", "texte": "mercredi 17 juin"},
+        {"type": "message", "texte": "SpamAlert: ABARI NI MIMI MADAME SIRENE CHRISHINA KUTOKA KUZIMU...", "heure": "12:15"}
+    ]
+}
+
+# Liste des contacts de l'écran d'accueil
+contacts_liste = [
+    {"id": "EQUITYBCDC", "nom": "EQUITYBCDC", "apercu": "Le depot de USD. de 185.00 sur le compte 7112*******1832.....", "heure": "06 août", "badge": ""},
+    {"id": "Vodacom", "nom": "Vodacom", "apercu": "Le solde de votre forfait internet de 0.00$ 1.00 GB est de 0.00 KB...", "heure": "21 juin", "badge": "6"},
+    {"id": "1463", "nom": "1463", "apercu": "Cher Client, Vodacom configure les parametres Internet...", "heure": "21 juin", "badge": "4"},
+    {"id": "VAULTPAY", "nom": "VAULTPAY", "apercu": "Votre verification KYC a ete rejetee. Note: La pihce...", "heure": "20 juin", "badge": "2"},
+    {"id": "+243994858031", "nom": "+243994858031", "apercu": "SpamAlert:ABARI NI MIMI MADAME SIRENE CHRISHINA...", "heure": "18 juin", "badge": "1"},
+    {"id": "OrangeMusic", "nom": "OrangeMusic", "apercu": "Vivez l'experience Amani Day avec David Ize, Michel Bakenda...", "heure": "28 mai", "badge": "2"},
+    {"id": "WINAFRICA", "nom": "WINAFRICA", "apercu": "But ebele na premi re-mi-temps ? Cote ezali 3,25 ! Ba cotes...", "heure": "22 mai", "badge": ""},
+    {"id": "+243975338290", "nom": "+243975338290", "apercu": "Spam Alert: Ahari venu nakuita mambo ni", "heure": "21 mai", "badge": ""}
+]
+
+# Génération dynamique des éléments HTML de la liste
+liste_html = ""
+for chat in contacts_liste:
+    badge_html = f'<div class="badge-orange">{chat["badge"]}</div>' if chat["badge"] else ""
+    liste_html += f"""
+    <div class="chat-item" onclick="ouvrirConversation('{chat['id']}', '{chat['nom']}')">
+        <div class="avatar">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="#2196f3">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+            </svg>
+        </div>
+        <div class="chat-info">
+            <div class="chat-top">
+                <span class="chat-name">{chat["nom"]}</span>
+                <span class="chat-time">{chat["heure"]}</span>
+            </div>
+            <div class="chat-bottom">
+                <span class="chat-preview">{chat["apercu"]}</span>
+                {badge_html}
+            </div>
+        </div>
+    </div>
+    """
+
+# Code HTML complet
+html_content = f"""
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages</title>
+    <style>
+        body {{
+            background-color: #0b0b0b;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }}
+        .screen {{
+            display: none;
+            height: 100vh;
+            box-sizing: border-box;
+            flex-direction: column;
+        }}
+        .screen.active {{
+            display: flex;
+        }}
+        .header-app {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px 10px 20px;
+        }}
+        .app-title {{
+            font-size: 26px;
+            font-weight: bold;
+        }}
+        .header-icons span {{
+            font-size: 20px;
+            margin-left: 20px;
+            color: #d1d1d6;
+            cursor: pointer;
+        }}
+        .scrollable-list {{
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 0 15px 80px 15px;
+        }}
+        .chat-item {{
+            display: flex;
+            align-items: flex-start;
+            padding: 12px 0;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }}
+        .avatar {{
+            width: 45px;
+            height: 45px;
+            background-color: #2b2b30;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }}
+        .chat-info {{
+            flex-grow: 1;
+            overflow: hidden;
+        }}
+        .chat-top {{
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }}
+        .chat-name {{
+            font-weight: bold;
+            font-size: 16px;
+            color: #ffffff;
+        }}
+        .chat-time {{
+            font-size: 13px;
+            color: #8e8e93;
+        }}
+        .chat-bottom {{
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }}
+        .chat-preview {{
+            font-size: 14px;
+            color: #8e8e93;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 230px;
+        }}
+        .badge-orange {{
+            background-color: #ff6b00;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+            margin-left: 8px;
+        }}
+        .floating-btn {{
+            position: fixed;
+            bottom: 75px;
+            right: 20px;
+            background-color: #2b2b30;
+            color: white;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }}
+        .bottom-nav {{
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: #0b0b0b;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #1c1c1e;
+        }}
+        .nav-item {{
+            text-align: center;
+            color: #8e8e93;
+            font-size: 12px;
+        }}
+        .nav-item.active {{
+            color: #ffffff;
+            font-weight: bold;
+        }}
+        .nav-icon {{
+            font-size: 18px;
+            margin-bottom: 2px;
+        }}
+        .chat-header-bar {{
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            border-bottom: 1px solid #1c1c1e;
+        }}
+        .back-btn {{
+            font-size: 24px;
+            color: #ffffff;
+            background: none;
+            border: none;
+            margin-right: 15px;
+            cursor: pointer;
+            padding: 0;
+        }}
+        .header-avatar {{
+            width: 38px;
+            height: 38px;
+            background-color: #2b2b30;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }}
+        .messages-scroll {{
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }}
+        .date-separator {{
+            text-align: center;
+            color: #8e8e93;
+            font-size: 12px;
+            margin: 20px 0 10px 0;
+        }}
+        .message {{
+            background-color: #262628;
+            color: #f1f1f1;
+            padding: 12px 15px;
+            border-radius: 18px;
+            margin-bottom: 10px;
+            max-width: 80%;
+            font-size: 14px;
+            line-height: 1.4;
+        }}
+        .time {{
+            font-size: 10px;
+            color: #8e8e93;
+            text-align: right;
+            margin-top: 4px;
+        }}
+    </style>
+</head>
+<body>
+
+    <!-- ÉCRAN 1 : Liste des messages -->
+    <div id="inbox-screen" class="screen active">
+        <div class="header-app">
+            <span class="app-title">Messages</span>
+            <div class="header-icons">
+                <span>🔍</span>
+                <span>Ξ7</span>
+                <span>⋮</span>
+            </div>
+        </div>
+
+        <div class="scrollable-list">
+            {liste_html}
+        </div>
+
+        <div class="floating-btn">💬</div>
+
+        <div class="bottom-nav">
+            <div class="nav-item active">
+                <div class="nav-icon">💬</div>
+                Discussions
+            </div>
+            <div class="nav-item">
+                <div class="nav-icon">👤</div>
+                Contacts
+            </div>
+        </div>
+    </div>
+
+    <!-- ÉCRAN 2 : Intérieur de la conversation avec la nouvelle icône de profil -->
+    <div id="chat-screen" class="screen">
+        <div class="chat-header-bar">
+            <button class="back-btn" onclick="retourInbox()">&#8592;</button>
+            <div class="header-avatar">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="#2196f3">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+            </div>
+            <span id="chat-title-header" style="font-weight:bold; font-size:18px;">EQUITYBCDC</span>
+        </div>
+
+        <div id="messages-container" class="messages-scroll">
+            <!-- Injecté dynamiquement -->
+        </div>
+    </div>
+
+    <script>
+        const allConversations = {conversations_data};
+
+        function ouvrirConversation(contactId, contactNom) {{
+            document.getElementById('chat-title-header').innerText = contactNom;
+            let container = document.getElementById('messages-container');
+            container.innerHTML = '';
+
+            let messages = allConversations[contactId] || [
+                {{"type": "date", "texte": "aujourd'hui"}},
+                {{"type": "message", "texte": "Aucun message detaille pour ce contact.", "heure": "12:00"}}
+            ];
+
+            messages.forEach(item => {{
+                if (item.type === 'date') {{
+                    container.innerHTML += `<div class="date-separator">${{item.texte}}</div>`;
+                }} else if (item.type === 'message') {{
+                    container.innerHTML += `
+                        <div class="message">
+                            ${{item.texte}}
+                            <div class="time">${{item.heure}}</div>
+                        </div>
+                    `;
+                }}
+            }});
+
+            document.getElementById('inbox-screen').classList.remove('active');
+            document.getElementById('chat-screen').classList.add('active');
+        }}
+
+        function retourInbox() {{
+            document.getElementById('chat-screen').classList.remove('active');
+            document.getElementById('inbox-screen').classList.add('active');
+        }}
+    </script>
+
+</body>
+</html>
+"""
+
+with open("chat.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+chemin_fichier = os.path.abspath("chat.html")
+webbrowser.open("file://" + chemin_fichier)
+print("Icône de profil ajoutée avec succès !")
